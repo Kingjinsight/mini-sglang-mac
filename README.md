@@ -58,7 +58,3 @@ print(llm.generate(["The capital of France is"], SamplingParams(max_tokens=32))[
 ```
 
 The GPU shares RAM with the rest of the system, so the KV cache takes half of the currently available memory by default. Change it with `--memory-ratio` or set an exact size with `--num-pages`.
-
-## Acknowledgements
-
-This project is derived from [mini-sglang](https://github.com/sgl-project/mini-sglang) by the SGLang team and keeps its MIT license. Outputs were checked against [mlx-lm](https://github.com/ml-explore/mlx-lm).
