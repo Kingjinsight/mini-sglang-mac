@@ -23,8 +23,8 @@ At batch size 1 the time goes into reading the 1.2 GB of weights, so there is no
 
 - **MLX engine.** Llama, Qwen2, Qwen3 and Mistral models (Mistral is untested) in BF16 or MLX-quantized form, a paged KV cache, and a sampler, all driven by the existing scheduler.
 - **Metal paged decode kernel.** It reads keys and values in place through a GPU copy of the page table, loads each KV row once per GQA group, and splits long contexts across threadgroups when the batch is small. It is 4–5× faster than gathering the KV cache and calling MLX's attention, and reaches 249 GB/s.
-- **MLX pitfalls.** Most of my time went into three places where MLX behaves differently from PyTorch. Writing into the KV cache quietly copies the whole cache if anything still holds the old version, so each step now waits for the last one to finish before it starts. Freed memory is kept for reuse with no limit, and the process grew to 35 GB before I capped it. And because every layer passes the whole KV cache to the kernel, MLX sent one GPU job per layer, so the CPU could no longer prepare the next step while the GPU worked. Raising `MLX_MAX_MB_PER_BUFFER` fixed that.
-- **Scheduler.** Requests used to reserve memory for their full output up front, even though most stop early, so far fewer of them could run at once. Now each one reserves only part of it, and if memory runs out halfway, the newest requests are paused and put back in the queue. I also fixed two small bugs from upstream: a request could emit one extra token after it should have stopped, or stop one token early when it hit its length limit.
+- **MLX pitfalls.** Three surprises: writing into the KV cache could silently copy the whole cache, freed memory piled up until the process hit 35 GB, and MLX split each step into one GPU job per layer, which kept the CPU from working ahead.
+- **Scheduler.** Requests now reserve memory for only part of their output, and the newest ones are paused when memory runs out. I also fixed two upstream bugs where a request stopped one token late or one token early.
 
 ## Quick start
 
