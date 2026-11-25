@@ -19,15 +19,6 @@ All numbers are measured on a MacBook with an M5 Pro (48 GB), serving Qwen3-0.6B
 
 At batch size 1 the time goes into reading the 1.2 GB of weights, so there is nothing to gain. The larger the batch, the more of each step is spent reading the KV cache, which is what the new attention kernel speeds up.
 
-**mini-sglang's own offline benchmark** ([bench.py](benchmark/offline/bench.py): 256 requests, 100–1024 input and output tokens each):
-
-| | Hardware | Memory bandwidth | Throughput |
-|---|---|---:|---:|
-| mini-sglang (official result) | 1× NVIDIA H200 | 4,800 GB/s | 20,711 tok/s |
-| mini-sglang-mac | M5 Pro, 11 GB KV cache | 238 GB/s (measured) | 1,464 tok/s |
-
-The gap is mostly hardware: the H200 has about 20× the memory bandwidth and can keep all 256 requests in flight, while the Mac ran about 40 at a time. One decode step at batch 40 with 840-token contexts takes 21.22 ms, against a 21.20 ms floor for reading its 5 GB of weights and KV cache at 238 GB/s.
-
 ## What I did
 
 - **MLX engine.** Llama, Qwen2, Qwen3 and Mistral models (Mistral is untested) in BF16 or MLX-quantized form, a paged KV cache, and a sampler, all driven by the existing scheduler.
@@ -67,12 +58,6 @@ print(llm.generate(["The capital of France is"], SamplingParams(max_tokens=32))[
 ```
 
 The GPU shares RAM with the rest of the system, so the KV cache takes half of the currently available memory by default. Change it with `--memory-ratio` or set an exact size with `--num-pages`.
-
-## Limitations
-
-- Single GPU and dense models only. MoE models and tensor parallelism are not supported.
-- Greedy outputs can differ from other engines when two tokens have exactly the same BF16 logit.
-- Decoding is bound by memory bandwidth. Without quantizing the KV cache, the benchmark above tops out at about 2,100 tok/s on this machine.
 
 ## Acknowledgements
 
